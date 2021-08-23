@@ -1,0 +1,56 @@
+insert into industry_prosperity_factor(industry_name,industry_level,date,factor_id,factor_signal) 
+ with cte as (
+                select
+                    `date`,
+                    factor_id,
+										industry_name,
+										industry_level
+                from ( 
+												select * from (
+                        (
+                            select 
+                                    distinct `date`
+                            from industry_prosperity_factor
+														where `date` between '2021-08-02' and '2021-08-12'
+                        ) as t1
+                        left join (
+                                    select 
+                                            factor_id 
+                                    from industry_prosperity_factor_map
+                        ) as t2 on 1=1 )
+                ) as t3
+                left join (
+                            select
+                                    distinct industry_name,
+                                    industry_level
+                            from industry_prosperity_factor
+                ) as t4 on 1=1
+)
+, cte1 as(
+            select 
+                    t7.industry_name,
+                    t7.industry_level,
+                    t7.`date`,
+                    t7.factor_id,
+                    t7.f_signal,
+                    case when f_signal is null then (
+																											 select factor_signal
+																											 from industry_prosperity_factor
+																											 where factor_signal is not null and industry_name = t7.industry_name 
+																											 and factor_id = t7.factor_id and `date`<= t7.date
+																											 group by `date` ORDER BY `date` desc limit 1
+                    ) else f_signal END as factor_signal
+            from ( 
+											select * 
+											from cte as t8
+											left join (
+																	select  industry_name as `name`,
+																					industry_level as `level`,
+																					factor_id as f_id,
+																				 `date` as f_date,
+																					factor_signal as f_signal
+																	from industry_prosperity_factor
+											) as t6 on t6.name = t8.industry_name and t6.level = t8.industry_level and t6.f_id = t8.factor_id and t6.f_date = t8.date 			
+            ) as t7
+)
+select industry_name,industry_level,date,factor_id,factor_signal from cte1 where factor_signal is not null and f_signal is null
